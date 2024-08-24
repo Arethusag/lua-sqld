@@ -1,0 +1,16 @@
+{
+    "workspace": {
+        "library": [
+            "spec"
+        ]
+    },
+    "diagnostics": {
+        "globals": [
+            "describe",
+            "it",
+            "setup",
+            "teardown",
+        ]
+    }
+}
+
