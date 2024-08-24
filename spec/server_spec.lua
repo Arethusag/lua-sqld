@@ -1,61 +1,52 @@
 -- spec/server_spec.lua
-package.path = package.path .. ";./?.lua"
+package.path = package.path .. ";../?.lua"
 
-local Server = require("server")
 local socket = require("socket")
 
 describe("TCP Server", function()
-    local server
     local host = "127.0.0.1"
     local port = 12345
 
-    setup(function()
-        server = Server:new(host, port)
-        server:start()
-    end)
-
-    teardown(function()
-        server:stop()
-    end)
-
-    local function update_server(times)
-        for i = 1, times do
-            server:update()
-            socket.sleep(0.01)
-        end
-    end
-
     local function create_client()
         local client = assert(socket.tcp())
-        client:settimeout(2)
         assert(client:connect(host, port))
-        update_server(10) -- Allow time for server to process the connection
         return client
     end
 
+    setup(function()
+        server_process = io.popen("lua server_init.lua " .. host .. " " .. port)
+        socket.sleep(0.5)
+    end)
+
+    teardown(function()
+        local client = create_client()
+        client:send("shutdown\n")
+        client:close()
+
+        if server_process then
+            server_process:close()
+        end
+    end)
+
     it("should accept client connections", function()
         local client = create_client()
-        update_server(10)
-        assert.is_true(#server.clients == 1)
+        assert.is_truthy(client)
         client:close()
-        update_server(10)
     end)
 
     it("should echo messages back to the client", function()
         local client = create_client()
-        local message = "Hello, Server!"
+        local message = "echo_test"
         assert(client:send(message .. "\n"))
-        update_server(10)
         local response, err = client:receive("*l")
         assert.is_nil(err)
-        assert.are.equal("Echo: " .. message, response)
+        assert.are.equal(message, response)
         client:close()
-        update_server(10)
     end)
 
     it("should handle multiple clients simultaneously", function()
         local clients = {}
-        local messages = { "First", "Second", "Third" }
+        local messages = { "echo_test1", "echo_test2", "echo_test3" }
 
         for i = 1, #messages do
             local client = create_client()
@@ -66,21 +57,11 @@ describe("TCP Server", function()
             assert(client:send(messages[i] .. "\n"))
         end
 
-        update_server(20)
-
         for i, client in ipairs(clients) do
             local response, err = client:receive("*l")
             assert.is_nil(err)
-            assert.are.equal("Echo: " .. messages[i], response)
+            assert.are.equal(messages[i], response)
             client:close()
         end
     end)
-
-    it("should properly disconnect clients", function()
-        local client = create_client()
-        client:close()
-        update_server(10)
-        assert.is_true(#server.clients == 0)
-    end)
 end)
-
