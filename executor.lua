@@ -8,7 +8,7 @@ local REQUEST_PIPE = arg[1] or os.tmpname()
 local RESPONSE_PIPE = arg[2] or os.tmpname()
 
 local driver = Driver:new()
-local logger = Logger:new("driver_process.log")
+local logger = Logger:new("executor.log")
 
 local function create_pipe(pipe_name)
     os.remove(pipe_name)
