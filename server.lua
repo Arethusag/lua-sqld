@@ -2,6 +2,7 @@
 local socket = require("socket")
 local copas = require("copas")
 local logger = require("logger")
+local json = require("cjson")
 
 local Server = {}
 Server.__index = Server
@@ -19,13 +20,15 @@ function Server:handle_client(sock)
     while true do
         local data, err = copas.receive(sock, "*l")
         if data then
+            request = json.decode(data)
             self.logger:log("Received: " .. data)
-            if data == "shutdown" then
+            if request.action == "shutdown" then
                 self.shutdown = true
                 break
-            end
-            if string.sub(data, 1, 4) == "echo" then
-                copas.send(sock, data .. "\n")
+            elseif request.action == "echo" then
+                copas.send(sock, request.message .. "\n")
+            else
+                copas.send(sock, "Unknown request: " .. data "\n")
             end
         else
             if err == "closed" then
