@@ -7,7 +7,7 @@ describe("Driver", function()
 
     before_each(function()
         driver = Driver:new()
-        driver:connect()
+        driver:connect("PostgreSQL-TestDB")
     end)
 
     after_each(function()

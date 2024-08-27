@@ -3,6 +3,7 @@ package.path = package.path .. ";../?.lua"
 
 local socket = require("socket")
 local json = require("cjson")
+local utils = require("utils")
 
 describe("TCP Server", function()
     local host = "127.0.0.1"
@@ -14,11 +15,6 @@ describe("TCP Server", function()
         return client
     end
 
-    local function encode_request(data)
-        local json_string = json.encode(data)
-        return json_string:gsub("\n", "") .. "\n"
-    end
-
     setup(function()
         server_process = io.popen("lua server_init.lua " .. host .. " " .. port)
         socket.sleep(0.5)
@@ -26,8 +22,9 @@ describe("TCP Server", function()
 
     teardown(function()
         local client = create_client()
-        local shutdown_request = encode_request({ action = "shutdown" })
-        client:send(shutdown_request)
+        local request = { action = "shutdown" }
+        local json_request = utils.encode_json_singleline(request)
+        client:send(json_request)
         client:close()
 
         if server_process then
@@ -43,12 +40,13 @@ describe("TCP Server", function()
 
     it("should echo messages back to the client", function()
         local client = create_client()
-        local request_table = { action = "echo", message = "test0" }
-        local request_string = encode_request(request_table)
-        assert(client:send(request_string))
-        local response, err = client:receive("*l")
+        local request = { action = "echo", message = "test0" }
+        local json_request = utils.encode_json_singleline(request)
+        assert(client:send(json_request))
+        local json_response, err = client:receive("*l")
+        local response = json.decode(json_response)
         assert.is_nil(err)
-        assert.are.equal(request_table.message, response)
+        assert.are.equal(request.message, response.message)
         client:close()
     end)
 
@@ -62,16 +60,19 @@ describe("TCP Server", function()
         end
 
         for i, client in ipairs(clients) do
-            local request_table = { action = "echo", message = messages[i] }
-            local request_string = encode_request(request_table)
-            assert(client:send(request_string))
+            local request = { action = "echo", message = messages[i] }
+            local json_request = utils.encode_json_singleline(request)
+            assert(client:send(json_request))
         end
 
         for i, client in ipairs(clients) do
-            local response, err = client:receive("*l")
+            local json_response, err = client:receive("*l")
+            local response = json.decode(json_response)
             assert.is_nil(err)
-            assert.are.equal(messages[i], response)
+            assert.are.equal(messages[i], response.message)
             client:close()
         end
     end)
+
+    -- it("should let clients establish database connections")
 end)

@@ -4,18 +4,17 @@ local logger = require("logger")
 local Driver = {}
 Driver.__index = Driver
 
-function Driver:new(options)
+function Driver:new()
     local driver = {}
     setmetatable(driver, Driver)
-    driver.options = options or {}
     driver.queries = {}
     driver.env = luasql.odbc()
     driver.logger = logger:new("driver.log")
     return driver
 end
 
-function Driver:connect()
-    local conn, err = self.env:connect("PostgreSQL-TestDB")
+function Driver:connect(dsn)
+    local conn, err = self.env:connect(dsn)
     if not conn then
         error("Failed to connect: " .. tostring(err))
     end
@@ -53,7 +52,6 @@ function Driver:execute_query(query_id, query_string)
         cursor:close()
         return rows
     end)
-
 
     if success then
         self.queries[query_id] = { status = "completed", result = result }
