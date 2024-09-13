@@ -15,11 +15,11 @@ describe("Driver", function()
     end)
 
     it("should execute queries successfully", function()
-        driver:execute_query("test_query", "SELECT COUNT(*) as client_count FROM client")
+        driver:execute_query("test_query", "SELECT COUNT(*) as count FROM client")
         local result = driver:get_query_result("test_query")
         assert.are.equal("completed", result.status)
         assert.is_true(#result.result > 0)
-        assert.is_not_nil(result.result[1].client_count)
+        assert.is_not_nil(result.result[1].count)
     end)
 
     it("should handle query errors", function()

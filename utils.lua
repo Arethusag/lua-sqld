@@ -19,7 +19,18 @@ function utils.read_from_pipe(pipe)
     local file = assert(io.open(pipe, "r"))
     local data = file:read("*a")
     file:close()
-    return json.decode(data)
+
+    if data then
+        local success, result = pcall(json.decode, data)
+        if success then
+            return result
+        else
+            error(result)
+            return nil
+        end
+    else
+        return nil
+    end
 end
 
 return utils
