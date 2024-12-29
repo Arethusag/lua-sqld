@@ -16,7 +16,7 @@ function Driver:new()
 end
 
 function Driver:connect(dsn)
-    self.driver_logger:log("Instantiating connection to databse")
+    self.driver_logger:log("Instantiating connection to database")
     local conn, err = self.env:connect(dsn)
     if not conn then
         self.driver_logger:log("Failed to connect: " .. tostring(err))

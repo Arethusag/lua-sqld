@@ -38,7 +38,7 @@ describe("TCP Dispatcher", function()
 
     setup(function()
         logger:log("Setting up test environment")
-        server_process = io.popen("lua dispatcher_init.lua " .. host .. " " .. port)
+        server_process = io.popen("luajit dispatcher_init.lua " .. host .. " " .. port)
         socket.sleep(1)
         logger:log("Dispatcher started")
     end)
@@ -158,7 +158,7 @@ describe("TCP Dispatcher", function()
         local request = {
             action = "dbconnect",
             bufnr = "1",
-            dsn = "PostgreSQL-TestDB"
+            dsn = "localhost"
         }
 
         local json_request = utils.encode_json_singleline(request)

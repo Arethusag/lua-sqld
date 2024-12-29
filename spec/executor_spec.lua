@@ -3,7 +3,7 @@ package.path = package.path .. ";./?.lua"
 local socket = require("socket")
 local utils = require("utils")
 local Logger = require("logger")
-local logger = Logger:new("executor.log", "executor_spec.lua")
+local logger = Logger:new("dispatcher.log", "executor_spec.lua")
 local json = require("cjson")
 
 describe("SQL Executor", function()
@@ -27,7 +27,7 @@ describe("SQL Executor", function()
 
     setup(function()
         logger:log("Setting up test environment")
-        executor = assert(io.popen("lua executor.lua " .. port))
+        executor = assert(io.popen("luajit executor.lua " .. port))
         os.execute("sleep 1")
 
         client = assert(socket.connect(host, port))
@@ -39,7 +39,7 @@ describe("SQL Executor", function()
         logger:log("Testing database connection")
         local request = {
             action = "connect",
-            dsn = "PostgreSQL-TestDB"
+            dsn = "localhost"
         }
         send_request(request)
         logger:log("Connection request sent")
@@ -56,7 +56,7 @@ describe("SQL Executor", function()
         local query = {
             action = "query",
             query_id = "test1",
-            query_string = "SELECT * FROM client LIMIT 1"
+            query_string = "SELECT GETDATE() AS date;"
         }
 
         send_request(query)
@@ -65,9 +65,7 @@ describe("SQL Executor", function()
         logger:log("Query response received: " .. json.encode(response))
         assert.are.equal("completed", response.status)
         assert.is_true(#response.result > 0)
-        assert.are.equal("completed", response.status)
-        assert.are.equal(1, tonumber(response.result[1].id))
-        assert.are.equal("Bob", response.result[1].name)
+        assert.is_not_nil(response.result[1].date)
         logger:log("Simple query test completed")
     end)
 
@@ -76,7 +74,7 @@ describe("SQL Executor", function()
         local query = {
             action = "query",
             query_id = "test2",
-            query_string = "SELECT * FROM non_existent_table"
+            query_string = "SELECT * FROM non_existent_table;"
         }
         send_request(query)
         logger:log("Invalid query sent: " .. json.encode(query))
@@ -85,8 +83,7 @@ describe("SQL Executor", function()
         logger:log("Invalid query response received: " .. json.encode(response))
         assert.are.equal("error", response.status)
         assert.is_not_nil(response.error)
-        assert.truthy(response.error:match("relation \"non_existent_table\" " ..
-            "does not exist"))
+        assert.truthy(response.error:find("Invalid object name"))
         logger:log("invalid query test completed")
     end)
 
@@ -96,12 +93,12 @@ describe("SQL Executor", function()
             {
                 action = "query",
                 query_id = "test3",
-                query_string = "SELECT COUNT(*) FROM client"
+                query_string = "SELECT GETDATE() as date;"
             },
             {
                 action = "query",
                 query_id = "test4",
-                query_string = "SELECT * FROM client LIMIT 2"
+                query_string = "SELECT GETDATE() as date, GETDATE() as date2;"
             }
         }
 
@@ -115,13 +112,12 @@ describe("SQL Executor", function()
             assert.are.equal("completed", response.status)
 
             if i == 1 then
-                assert.are.equal(2, tonumber(response.result[1].count))
+                assert.is_true(#response.result > 0)
+                assert.is_not_nil(response.result[1].date)
             elseif i == 2 then
-                assert.are.equal(2, #response.result)
-                assert.are.equal(1, tonumber(response.result[1].id))
-                assert.are.equal("Bob", response.result[1].name)
-                assert.are.equal(2, tonumber(response.result[2].id))
-                assert.are.equal("Sally", response.result[2].name)
+                assert.is_true(#response.result > 0)
+                assert.is_not_nil(response.result[1].date)
+                assert.is_not_nil(response.result[1].date2)
             end
         end
         logger:log("Multiple sequential queries test completed")

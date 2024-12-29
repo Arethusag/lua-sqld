@@ -1,4 +1,3 @@
--- dispatcher.lua
 local socket = require("socket")
 local copas = require("copas")
 local Logger = require("logger")
@@ -14,26 +13,30 @@ function Dispatcher:new(host, port)
     dispatcher.host = host or "127.0.0.1"
     dispatcher.port = port or 12345
     dispatcher.logger = Logger:new("dispatcher.log", "dispatcher.lua")
-    dispatcher.next_port = port + 1 or 12346
     dispatcher.shutdown = false
     dispatcher.clients = {}
     return dispatcher
 end
 
 function Dispatcher:spawn_executor(bufnr, dsn)
-    local executor_port = self.next_port
-    self.next_port = self.next_port + 1
-    local cmd = string.format("lua executor.lua %d", executor_port)
+
+    -- Let the OS pick a free port
+    local temp_socket = socket.tcp()
+    temp_socket:bind(self.host, 0)
+    local _, executor_port = temp_socket:getsockname()
+    temp_socket:close()
+
+    local cmd = string.format("luajit executor.lua %d", executor_port)
 
     self.logger:log("Spawning executor: " .. cmd)
     local executor_process = io.popen(cmd)
 
-    socket.sleep(1)
-
     local executor_socket = socket.tcp()
-    local connected = executor_socket:connect(self.host, executor_port)
-    if not connected then
-        self.logger:log("Failed to connect to executor")
+    executor_socket:settimeout(5)
+    local ok, err = executor_socket:connect(self.host, executor_port)
+    if not ok then
+        self.logger:log(string.format("Failed to connect to executor: %s", err))
+        executor_process:close()
         return nil
     end
 
