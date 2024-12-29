@@ -15,17 +15,17 @@ function Dispatcher:new(host, port)
     dispatcher.logger = Logger:new("dispatcher.log", "dispatcher.lua")
     dispatcher.shutdown = false
     dispatcher.clients = {}
+
+    -- Create a request queue for dispatching tasks to executors
+    dispatcher.request_queue = copas.queue.new({ name = "request_queue" })
+
     return dispatcher
 end
 
+-- Spawn an executor with TCP communication channel
 function Dispatcher:spawn_executor(bufnr, dsn)
 
-    -- Let the OS pick a free port
-    local temp_socket = socket.tcp()
-    temp_socket:bind(self.host, 0)
-    local _, executor_port = temp_socket:getsockname()
-    temp_socket:close()
-
+    executor_port = utils.get_free_os_port(self.host)
     local cmd = string.format("luajit executor.lua %d", executor_port)
 
     self.logger:log("Spawning executor: " .. cmd)
@@ -45,6 +45,10 @@ function Dispatcher:spawn_executor(bufnr, dsn)
 
     local executor_request_queue = {}
     local executor_response_queue = {}
+
+
+    -- Create a response queue for the executor
+    local response_queue = copas.queue.new({ name = "response_queue_" .. executor_port })
 
     copas.addthread(function()
         self:handle_executor(executor_socket, executor_request_queue,
@@ -66,6 +70,7 @@ function Dispatcher:spawn_executor(bufnr, dsn)
     return executor
 end
 
+-- Async function to handle executor's request and response queues
 function Dispatcher:handle_executor(sock, request_queue, response_queue)
     self.logger:log("Handle executor started")
     while true do
@@ -90,6 +95,7 @@ function Dispatcher:handle_executor(sock, request_queue, response_queue)
     end
 end
 
+-- Handle incoming client requests
 function Dispatcher:handle_client_request(request, sock)
     if request.action == "echo" then
         self.logger:log("Echo request received")
@@ -133,6 +139,7 @@ function Dispatcher:handle_client_request(request, sock)
     end
 end
 
+-- Function to accept new client connections
 function Dispatcher:handle_client(sock)
     self.logger:log("New client connected")
     while true do
