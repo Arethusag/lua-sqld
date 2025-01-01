@@ -1,14 +1,12 @@
 -- spec/dispatcher_spec.lua
 package.path = package.path .. ";../?.lua;./?.lua"
 
---require("mobdebug").start()
-
 local socket = require("socket")
 local json = require("cjson")
 local utils = require("utils")
 local Logger = require("logger")
 local logger = Logger:new("dispatcher.log", "dispatcher_spec.lua")
-local config = require("inifile").parse("config.ini")
+local config = utils.parse_inifile("config.ini")
 
 describe("TCP Dispatcher", function()
     local host = "127.0.0.1"
@@ -29,9 +27,9 @@ describe("TCP Dispatcher", function()
 
 
     local function send_and_receive(client, request)
-        local json_request = utils.encode_json_singleline(request)
-        logger:log("Client sending request: " .. json_request)
-        assert(client:send(json_request))
+        local message = json.encode(request)
+        logger:log("Client sending request: " .. message)
+        assert(client:send(message .. "\n"))
         socket.sleep(1)
         local json_response, err = client:receive("*l")
         if err then
@@ -60,8 +58,8 @@ setup(function()
         logger:log("Tearing down test environment")
         local client = create_client()
         local request = { action = "shutdown" }
-        local json_request = utils.encode_json_singleline(request)
-        client:send(json_request)
+        local message = json.encode(request)
+        client:send(message .. "\n")
         client:close()
 
         if server_process then
@@ -124,9 +122,9 @@ setup(function()
             coroutine.yield()
 
             local request = { action = "echo", message = messages[index] }
-            local json_request = utils.encode_json_singleline(request)
-            logger:log("Client sending request: " .. json_request)
-            client:send(json_request)
+            local message = json.encode(request)
+            logger:log("Client sending request: " .. message)
+            client:send(message .. "\n")
             socket.sleep(1)
             coroutine.yield()
 
@@ -175,9 +173,9 @@ setup(function()
             dsn = config.odbc.dsn
         }
 
-        local json_request = utils.encode_json_singleline(request)
-        logger:log("Client sending request: " .. json_request)
-        client:send(json_request)
+        local message = json.encode(request)
+        logger:log("Client sending request: " .. message)
+        client:send(message .. "\n")
         socket.sleep(1)
 
         local json_response, err = client:receive("*l")

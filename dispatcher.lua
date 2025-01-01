@@ -120,9 +120,7 @@ function Dispatcher:handle_client_request(request, client_socket)
     self.logger:log("Handling client request: " .. json.encode(request))
     if request.action == "echo" then
         self.logger:log("Echo request received")
-        copas.send(client_socket, utils.encode_json_singleline({
-            message = request.message
-        }))
+        copas.send(client_socket, json.encode({ message = request.message }) .. "\n")
     elseif request.action == "dbconnect" then
         self.logger:log("DB connect request received: " .. json.encode(request))
         local executor = self:spawn_executor(request.bufnr, request.dsn)
@@ -132,10 +130,10 @@ function Dispatcher:handle_client_request(request, client_socket)
             self.executor_queue:push(request_data)
         else
             self.logger:log("Failed to spawn executor")
-            copas.send(client_socket, utils.encode_json_singleline({
+            copas.send(client_socket, json.encode({
                 status = "error",
                 error = "Failed to spawn executor"
-            }))
+            }) .. "\n")
         end
     elseif request.action == "shutdown" then
         self.logger:log("Shutdown request received")
@@ -172,8 +170,10 @@ function Dispatcher:handle_client(client_socket)
 end
 
 function Dispatcher:run()
+
     self.dispatcher_socket = assert(socket.bind(self.host, self.port))
     self.dispatcher_socket:settimeout(0)
+
     copas.addserver(self.dispatcher_socket, function(client_socket)
         self:handle_client(client_socket)
     end)
@@ -202,48 +202,6 @@ function Dispatcher:run()
         self:handle_executor_request(data.request, data.client_socket, data.executor)
     end)
 
-
-    --self.request_queue = copas.queue.new({ name = "request_queue" })
-    --self.result_queue = copas.queue.new({ name = "result_queue" })
-    --self.executor_queue = copas.queue.new({ name = "executor_queue"})
-
-    --self.request_queue:add_worker(function(request_data)
-    --    self.logger:log("Request queue worker processing next request")
-    --    local request = request_data.request
-    --    local client_socket = request_data.client_socket
-    --    local success, err = pcall(function()
-    --        self:handle_client_request(request, client_socket)
-    --    end)
-    --    if not success then
-    --        self.logger:log("Error in request worker: " .. tostring(err))
-    --    end
-    --end)
-
-    --self.result_queue:add_worker(function(result_data)
-    --    self.logger:log("Response queue worker processing next result")
-    --    local result = result_data.result
-    --    local client_socket = result_data.client_socket
-    --    local success, err = pcall(function()
-    --        self:handle_executor_result(result, client_socket)
-    --    end)
-    --    if not success then
-    --        self.logger:log("Error in response worker: " .. tostring(err))
-    --    end
-    --end)
-
-    --self.executor_queue:add_worker(function(executor_data)
-    --    self.logger:log("Executor queue worker processing next request")
-    --    local request = executor_data.request
-    --    local client_socket = executor_data.client_socket
-    --    local executor = executor_data.executor
-    --    local success, err = pcall(function()
-    --        self:handle_executor_request(request, client_socket, executor)
-    --    end)
-    --    if not success then
-    --        self.logger:log("Error in response worker: " .. tostring(err))
-    --    end
-    --end)
-
     self.logger:log("Dispatcher started on " .. self.host .. ":" .. self.port)
     while not self.shutdown do
         copas.step(0.1)
@@ -253,12 +211,15 @@ function Dispatcher:run()
 end
 
 function Dispatcher:cleanup()
+
     self.request_queue:stop()
     self.result_queue:stop()
     self.executor_queue:stop()
+
     if self.dispatcher_socket then
         self.dispatcher_socket:close()
     end
+
     for _, executor in pairs(self.executors) do
         if executor.socket then
             self.logger:log("Sending disconnect request to executor, bufnr: " ..

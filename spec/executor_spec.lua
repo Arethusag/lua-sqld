@@ -1,13 +1,11 @@
 package.path = package.path .. ";./?.lua"
 
-require("mobdebug").start()
-
 local socket = require("socket")
 local utils = require("utils")
 local Logger = require("logger")
 local logger = Logger:new("dispatcher.log", "executor_spec.lua")
 local json = require("cjson")
-local config = require("inifile").parse("config.ini")
+local config = utils.parse_inifile("config.ini")
 
 describe("SQL Executor", function()
     local executor
@@ -16,8 +14,11 @@ describe("SQL Executor", function()
     local port = utils.get_free_os_port(host)
 
     local function send_request(request)
-        local json_request = utils.encode_json_singleline(request)
-        client:send(json_request)
+        local message = json.encode(request) .. "\n"
+        local _, err = client:send(message)
+        if err then
+            error("Failed to send request: " .. (err or "unknown error"))
+        end
     end
 
     local function receive_response()
@@ -31,19 +32,16 @@ describe("SQL Executor", function()
     setup(function()
         logger:log("Setting up test environment")
         executor = assert(io.popen(config.lua.exec .. " executor.lua " .. port))
-        os.execute("sleep 1")
-
+        socket.sleep(1)
         client = assert(socket.connect(host, port))
         client:settimeout(5)
         logger:log("Test environment set up complete")
     end)
 
     it("should connect to a valid database", function()
+
         logger:log("Testing database connection")
-        local request = {
-            action = "dbconnect",
-            dsn = config.odbc.dsn
-        }
+        local request = { action = "dbconnect", dsn = config.odbc.dsn }
         send_request(request)
         logger:log("Connection request sent")
 

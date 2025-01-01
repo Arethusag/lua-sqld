@@ -1,7 +1,6 @@
 local luasql = require("luasql.odbc")
 local Logger = require("logger")
-local utils = require("utils")
-
+local json = require("cjson")
 
 local Driver = {}
 Driver.__index = Driver
@@ -66,14 +65,13 @@ function Driver:execute_query(query_id, query_string)
         self.queries[query_id] = { status = "error", error = error_message }
     end
 
-    local json_result = utils.encode_json_singleline(self.queries[query_id])
+    local json_result = json.encode(self.queries[query_id])
     self.driver_logger:log("Query results: " .. json_result)
 end
 
 function Driver:get_query_result(query_id)
     local result = self.queries[query_id]
-    self.driver_logger:log("Retrieving query result: " ..
-        utils.encode_json_singleline(result))
+    self.driver_logger:log("Retrieving query result: " .. json.encode(result))
     return result
 end
 

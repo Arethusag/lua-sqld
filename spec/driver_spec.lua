@@ -1,7 +1,8 @@
 package.path = package.path .. ";./?.lua"
 
 local Driver = require("driver")
-local config = require("inifile").parse("config.ini")
+local utils = require("utils")
+local config = utils.parse_inifile("config.ini")
 
 describe("Driver", function()
     local driver
