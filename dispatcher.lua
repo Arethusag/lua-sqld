@@ -24,7 +24,7 @@ end
 function Dispatcher:spawn_executor(bufnr, dsn)
 
     executor_port = utils.get_free_os_port(self.host)
-    local cmd = string.format(config.lua.exec .. " executor.lua %d", executor_port)
+    local cmd = string.format(config.lua.exec, " executor.lua %d", executor_port)
 
     self.logger:log("Spawning executor: " .. cmd)
     local executor_process = io.popen(cmd)
@@ -177,46 +177,72 @@ function Dispatcher:run()
     copas.addserver(self.dispatcher_socket, function(client_socket)
         self:handle_client(client_socket)
     end)
-    self.request_queue = copas.queue.new({ name = "request_queue" })
-    self.result_queue = copas.queue.new({ name = "result_queue" })
-    self.executor_queue = copas.queue.new({ name = "executor_queue"})
 
-    self.request_queue:add_worker(function(request_data)
-        self.logger:log("Request queue worker processing next request")
-        local request = request_data.request
-        local client_socket = request_data.client_socket
-        local success, err = pcall(function()
-            self:handle_client_request(request, client_socket)
+    local function setup_queue(name, worker_function)
+        local queue = copas.queue.new({ name = name })
+        queue:add_worker(function(data)
+            self.logger:log(name .. " worker processing next task")
+            local success, err = pcall(worker_function, data)
+            if not success then
+                self.logger:log("Error in " .. name .. " worker: " .. tostring(err))
+            end
         end)
-        if not success then
-            self.logger:log("Error in request worker: " .. tostring(err))
-        end
+        return queue
+    end
+
+    self.request_queue = setup_queue("request_queue", function(data)
+        self:handle_client_request(data.request, data.client_socket)
     end)
 
-    self.result_queue:add_worker(function(result_data)
-        self.logger:log("Response queue worker processing next result")
-        local result = result_data.result
-        local client_socket = result_data.client_socket
-        local success, err = pcall(function()
-            self:handle_executor_result(result, client_socket)
-        end)
-        if not success then
-            self.logger:log("Error in response worker: " .. tostring(err))
-        end
+    self.result_queue = setup_queue("result_queue", function(data)
+        self:handle_executor_result(data.result, data.client_socket)
     end)
 
-    self.executor_queue:add_worker(function(executor_data)
-        self.logger:log("Executor queue worker processing next request")
-        local request = executor_data.request
-        local client_socket = executor_data.client_socket
-        local executor = executor_data.executor
-        local success, err = pcall(function()
-            self:handle_executor_request(request, client_socket, executor)
-        end)
-        if not success then
-            self.logger:log("Error in response worker: " .. tostring(err))
-        end
+    self.executor_queue = setup_queue("executor_queue", function(data)
+        self:handle_executor_request(data.request, data.client_socket, data.executor)
     end)
+
+
+    --self.request_queue = copas.queue.new({ name = "request_queue" })
+    --self.result_queue = copas.queue.new({ name = "result_queue" })
+    --self.executor_queue = copas.queue.new({ name = "executor_queue"})
+
+    --self.request_queue:add_worker(function(request_data)
+    --    self.logger:log("Request queue worker processing next request")
+    --    local request = request_data.request
+    --    local client_socket = request_data.client_socket
+    --    local success, err = pcall(function()
+    --        self:handle_client_request(request, client_socket)
+    --    end)
+    --    if not success then
+    --        self.logger:log("Error in request worker: " .. tostring(err))
+    --    end
+    --end)
+
+    --self.result_queue:add_worker(function(result_data)
+    --    self.logger:log("Response queue worker processing next result")
+    --    local result = result_data.result
+    --    local client_socket = result_data.client_socket
+    --    local success, err = pcall(function()
+    --        self:handle_executor_result(result, client_socket)
+    --    end)
+    --    if not success then
+    --        self.logger:log("Error in response worker: " .. tostring(err))
+    --    end
+    --end)
+
+    --self.executor_queue:add_worker(function(executor_data)
+    --    self.logger:log("Executor queue worker processing next request")
+    --    local request = executor_data.request
+    --    local client_socket = executor_data.client_socket
+    --    local executor = executor_data.executor
+    --    local success, err = pcall(function()
+    --        self:handle_executor_request(request, client_socket, executor)
+    --    end)
+    --    if not success then
+    --        self.logger:log("Error in response worker: " .. tostring(err))
+    --    end
+    --end)
 
     self.logger:log("Dispatcher started on " .. self.host .. ":" .. self.port)
     while not self.shutdown do
