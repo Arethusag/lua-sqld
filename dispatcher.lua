@@ -24,7 +24,7 @@ end
 function Dispatcher:spawn_executor(bufnr, dsn)
 
     executor_port = utils.get_free_os_port(self.host)
-    local cmd = string.format(config.lua.exec, " executor.lua %d", executor_port)
+    local cmd = string.format(config.lua.exec .. " executor.lua %d", executor_port)
 
     self.logger:log("Spawning executor: " .. cmd)
     local executor_process = io.popen(cmd)
