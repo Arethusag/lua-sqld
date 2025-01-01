@@ -15,7 +15,7 @@ describe("TCP Dispatcher", function()
     local function create_client()
         local client = assert(socket.tcp())
         assert(client:connect(host, port))
-        client:settimeout(0)
+        client:settimeout(5)
         return client
     end
 
@@ -30,7 +30,6 @@ describe("TCP Dispatcher", function()
         local message = json.encode(request)
         logger:log("Client sending request: " .. message)
         assert(client:send(message .. "\n"))
-        socket.sleep(1)
         local json_response, err = client:receive("*l")
         if err then
             logger:log("Error receiving response: " .. tostring(err))
@@ -45,12 +44,11 @@ describe("TCP Dispatcher", function()
         return json.decode(json_response)
     end
 
-setup(function()
+    setup(function()
         logger:log("Setting up test environment")
         local process_cmd = config.lua.exec .. " dispatcher_init.lua "
         local process_args = host .. " " .. port
         server_process = io.popen(process_cmd .. process_args)
-        socket.sleep(1)
         logger:log("Dispatcher started")
     end)
 
@@ -65,7 +63,6 @@ setup(function()
         if server_process then
             server_process:close()
         end
-        socket.sleep(1)
         logger:log("Server stopped")
     end)
 
@@ -125,7 +122,6 @@ setup(function()
             local message = json.encode(request)
             logger:log("Client sending request: " .. message)
             client:send(message .. "\n")
-            socket.sleep(1)
             coroutine.yield()
 
             local json_response = client:receive("*l")
@@ -176,7 +172,6 @@ setup(function()
         local message = json.encode(request)
         logger:log("Client sending request: " .. message)
         client:send(message .. "\n")
-        socket.sleep(1)
 
         local json_response, err = client:receive("*l")
         assert.is_nil(err, "Error receiving response: " .. tostring(err))

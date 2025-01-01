@@ -5,7 +5,7 @@ local copas = require("copas")
 local Logger = require("logger")
 local json = require("cjson")
 local utils = require("utils")
-local config = require("inifile").parse("config.ini")
+local config = utils.parse_inifile("config.ini")
 
 local Dispatcher = {}
 Dispatcher.__index = Dispatcher
@@ -143,7 +143,6 @@ end
 
 function Dispatcher:handle_client(client_socket)
     self.logger:log("New client connected")
-    client_socket:settimeout(0)
     while true do
         local data, err = copas.receive(client_socket, "*l")
         if data then
