@@ -1,16 +1,14 @@
 package.path = package.path .. ";./?.lua"
 
-local mobdebug = require("mobdebug")
 local Driver = require("driver")
-
-mobdebug.start()
+local config = require("inifile").parse("config.ini")
 
 describe("Driver", function()
     local driver
 
     before_each(function()
         driver = Driver:new()
-        driver:connect("localhost")
+        driver:connect(config.odbc.dsn)
     end)
 
     after_each(function()

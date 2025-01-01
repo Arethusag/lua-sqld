@@ -1,20 +1,23 @@
 -- spec/dispatcher_spec.lua
 package.path = package.path .. ";../?.lua;./?.lua"
 
+--require("mobdebug").start()
+
 local socket = require("socket")
 local json = require("cjson")
 local utils = require("utils")
 local Logger = require("logger")
-
 local logger = Logger:new("dispatcher.log", "dispatcher_spec.lua")
+local config = require("inifile").parse("config.ini")
 
 describe("TCP Dispatcher", function()
     local host = "127.0.0.1"
-    local port = 12345
+    local port = utils.get_free_os_port(host)
 
     local function create_client()
         local client = assert(socket.tcp())
         assert(client:connect(host, port))
+        client:settimeout(0)
         return client
     end
 
@@ -29,16 +32,26 @@ describe("TCP Dispatcher", function()
         local json_request = utils.encode_json_singleline(request)
         logger:log("Client sending request: " .. json_request)
         assert(client:send(json_request))
+        socket.sleep(1)
         local json_response, err = client:receive("*l")
-        logger:log("Client received response: " .. json_response)
+        if err then
+            logger:log("Error receiving response: " .. tostring(err))
+        end
+        if json_response then
+            logger:log("Client received response: " .. json_response)
+        else
+            logger:log("No response received from server")
+        end
         assert.is_nil(err)
-        assert.is_not_nil(json_response)
+        assert.is_not_nil(json_response, "Expected response from server but got none")
         return json.decode(json_response)
     end
 
-    setup(function()
+setup(function()
         logger:log("Setting up test environment")
-        server_process = io.popen("luajit dispatcher_init.lua " .. host .. " " .. port)
+        local process_cmd = config.lua.exec .. " dispatcher_init.lua "
+        local process_args = host .. " " .. port
+        server_process = io.popen(process_cmd .. process_args)
         socket.sleep(1)
         logger:log("Dispatcher started")
     end)
@@ -114,6 +127,7 @@ describe("TCP Dispatcher", function()
             local json_request = utils.encode_json_singleline(request)
             logger:log("Client sending request: " .. json_request)
             client:send(json_request)
+            socket.sleep(1)
             coroutine.yield()
 
             local json_response = client:receive("*l")
@@ -158,13 +172,13 @@ describe("TCP Dispatcher", function()
         local request = {
             action = "dbconnect",
             bufnr = "1",
-            dsn = "localhost"
+            dsn = config.odbc.dsn
         }
 
         local json_request = utils.encode_json_singleline(request)
         logger:log("Client sending request: " .. json_request)
-        client:settimeout(5)
         client:send(json_request)
+        socket.sleep(1)
 
         local json_response, err = client:receive("*l")
         assert.is_nil(err, "Error receiving response: " .. tostring(err))

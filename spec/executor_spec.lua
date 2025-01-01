@@ -1,16 +1,19 @@
 package.path = package.path .. ";./?.lua"
 
+require("mobdebug").start()
+
 local socket = require("socket")
 local utils = require("utils")
 local Logger = require("logger")
 local logger = Logger:new("dispatcher.log", "executor_spec.lua")
 local json = require("cjson")
+local config = require("inifile").parse("config.ini")
 
 describe("SQL Executor", function()
     local executor
     local client
     local host = "localhost"
-    local port = 8080
+    local port = utils.get_free_os_port(host)
 
     local function send_request(request)
         local json_request = utils.encode_json_singleline(request)
@@ -27,7 +30,7 @@ describe("SQL Executor", function()
 
     setup(function()
         logger:log("Setting up test environment")
-        executor = assert(io.popen("luajit executor.lua " .. port))
+        executor = assert(io.popen(config.lua.exec .. " executor.lua " .. port))
         os.execute("sleep 1")
 
         client = assert(socket.connect(host, port))
@@ -38,11 +41,21 @@ describe("SQL Executor", function()
     it("should connect to a valid database", function()
         logger:log("Testing database connection")
         local request = {
-            action = "connect",
-            dsn = "localhost"
+            action = "dbconnect",
+            dsn = config.odbc.dsn
         }
         send_request(request)
         logger:log("Connection request sent")
+
+        
+        local ready_received = false
+        while not ready_received do
+            local ready_msg = receive_response()
+                if ready_msg.action == "ready" then
+                    ready_received = true
+                end
+            socket.sleep(0.1)
+        end
 
         local response = receive_response()
         assert.is_not_nil(response)
@@ -83,7 +96,7 @@ describe("SQL Executor", function()
         logger:log("Invalid query response received: " .. json.encode(response))
         assert.are.equal("error", response.status)
         assert.is_not_nil(response.error)
-        assert.truthy(response.error:find("Invalid object name"))
+        assert.truthy(response.error:find(config.odbc.error))
         logger:log("invalid query test completed")
     end)
 

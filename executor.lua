@@ -111,9 +111,18 @@ local function main()
         return
     end
     logger:log("Dispatcher connected. Listening on port: " .. port)
-    logger:log("Waiting for request from client..")
 
-    client:settimeout(5)
+    -- Initialization is complete, send the "ready" signal
+    local ready_signal = json.encode({ action = "ready" })
+    logger:log("Sending ready signal: " .. ready_signal)
+    local bytes_sent, send_err = client:send(ready_signal .. "\n")
+    if not bytes_sent then
+        logger:log("Failed to send ready signal: " .. tostring(send_err))
+    end
+
+    client:settimeout(0)
+
+    logger:log("Waiting for request from client..")
 
     local should_continue = true
     local driver = nil
@@ -126,7 +135,7 @@ local function main()
                 logger:log("Request received: " .. json_request)
 
                 local response
-                if request.action == "connect" then
+                if request.action == "dbconnect" then
                     response = handle_connect_request(request.dsn)
                 elseif request.action == "query" then
                     response = process_query(request.query_id,
