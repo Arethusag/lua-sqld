@@ -3,7 +3,7 @@ package.path = package.path .. ";./?.lua"
 local socket = require("socket")
 local utils = require("utils")
 local Logger = require("logger")
-local logger = Logger:new("dispatcher.log", "executor_spec.lua")
+local logger = Logger:new("log", "executor_spec.lua")
 local json = require("cjson")
 local config = utils.parse_inifile("config.ini")
 
@@ -40,7 +40,7 @@ describe("SQL Executor", function()
     it("should connect to a valid database", function()
 
         logger:log("Testing database connection")
-        local request = { action = "dbconnect", dsn = config.odbc.dsn }
+        local request = { action = "connect", dsn = config.odbc.dsn }
         send_request(request)
         logger:log("Connection request sent")
 
@@ -133,15 +133,27 @@ describe("SQL Executor", function()
         logger:log("Multiple sequential queries test completed")
     end)
 
-    it("should terminate when receiving a disconnect action", function()
-        logger:log("Testing disconnect action")
+    it("should disconnect the driver when receiving a disconnect action", function()
+
         send_request({ action = "disconnect" })
         logger:log("Disconnect request sent")
+
+        local response = receive_response()
+        assert.is_not_nil(response)
+        assert.are.equal("success", response.status)
+
+        logger:log("Database disconnect test completed")
+    end)
+
+    it("should terminate when receiving a shutdown action", function()
+        logger:log("Testing shutdown action")
+        send_request({ action = "shutdown" })
+        logger:log("Shutdown request sent")
 
         local exit_code = executor:close()
         logger:log("Executor exit code " .. tostring(exit_code))
         assert.is_true(exit_code)
-        logger:log("Disconnect test completed")
+        logger:log("Shutdown test completed")
     end)
 
     teardown(function()

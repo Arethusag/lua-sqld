@@ -1,4 +1,5 @@
 Session.vim
 *.log
+log
 *.swp
 .vs

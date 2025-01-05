@@ -7,7 +7,8 @@ local json = require("cjson")
 local utils = require("utils")
 
 local port = arg[1] or 8080
-local logger = Logger:new("dispatcher.log", "executor.lua")
+local logger = Logger:new("log", "executor.lua")
+local driver
 
 logger:log("SQL Executor Process started on port: " .. port)
 
@@ -15,10 +16,7 @@ local function process_query(query_id, query_string)
     logger:log("Processing query: " .. query_id .. ", " .. query_string)
     if not driver then
         logger:log("Error: No active database connection")
-        return {
-            status = "error",
-            error = "No active database connection"
-        }
+        return { status = "error", error = "No active database connection" }
     end
 
     local success, result = pcall(function()
@@ -30,17 +28,11 @@ local function process_query(query_id, query_string)
 
     if success and result.status == "completed" then
         logger:log("Query result obtained")
-        return {
-            status = "completed",
-            result = result.result
-        }
+        return { status = "completed", result = result.result }
     else
         local error_message = result.error or "Unknown error"
         logger:log("Error processing query: " .. error_message)
-        return {
-            status = "error",
-            error = error_message
-        }
+        return { status = "error", error = error_message }
     end
 end
 
@@ -112,7 +104,6 @@ local function main()
     end
     logger:log("Dispatcher connected. Listening on port: " .. port)
 
-    -- Initialization is complete, send the "ready" signal
     local ready_signal = json.encode({ action = "ready" })
     logger:log("Sending ready signal: " .. ready_signal)
     local bytes_sent, send_err = client:send(ready_signal .. "\n")
@@ -125,7 +116,6 @@ local function main()
     logger:log("Waiting for request from client..")
 
     local should_continue = true
-    local driver = nil
 
     while should_continue do
         local json_request = client:receive("*l")
@@ -135,18 +125,25 @@ local function main()
                 logger:log("Request received: " .. json_request)
 
                 local response
-                if request.action == "dbconnect" then
+                if request.action == "connect" then
                     response = handle_connect_request(request.dsn)
                 elseif request.action == "query" then
-                    response = process_query(request.query_id,
-                        request.query_string)
+                    response = process_query(request.query_id, request.query_string)
                 elseif request.action == "disconnect" then
-                    logger:log("Disconnect request received")
+                    logger:log("Disconnect request received, attempting to disconnect driver...")
+                    if driver then
+                        logger:log("Disconnecting driver")
+                        driver:disconnect()
+                        response = { status = "success", message = "Disconnected" }
+                    else
+                        response = { status = "error", error = "failed to disconnect driver "}
+                    end
+                elseif request.action == "shutdown" then
+                    logger:log("Shutdown request received")
                     should_continue = false
-                    response = { status = "success", message = "Disconnected" }
+                    response = { status = "success", message = "Shutting down" }
                 else
-                    logger:log("Unknown request received: " ..
-                        json.encode(request))
+                    logger:log("Unknown request received: " ..  json.encode(request))
                     response = { status = "error", error = "Unknown action" }
                 end
                 logger:log("Sending response: " .. json.encode(response))
@@ -166,9 +163,10 @@ local function main()
         logger:log("Disconnecting driver")
         driver:disconnect()
     end
+
     client:close()
     server:close()
-    logger:log("Driver process terminated.")
+    logger:log("Executor process terminated.")
 end
 
 main()
