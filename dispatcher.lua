@@ -202,18 +202,6 @@ function Dispatcher:handle_client(client_socket)
 	end
 end
 
-function Dispatcher:setup_queue(name, worker_function)
-	local queue = copas.queue.new({ name = name })
-	queue:add_worker(function(data)
-		self.logger:log(name .. " worker processing next task")
-		local success, err = pcall(worker_function, data)
-		if not success then
-			self.logger:log("Error in " .. name .. " worker: " .. tostring(err))
-		end
-	end)
-	return queue
-end
-
 function Dispatcher:run()
 	self.dispatcher_socket = assert(socket.bind(self.host, self.port))
 	self.dispatcher_socket:settimeout(0)
@@ -221,6 +209,18 @@ function Dispatcher:run()
 	copas.addserver(self.dispatcher_socket, function(client_socket)
 		self:handle_client(client_socket)
 	end)
+
+    local function setup_queue(name, worker_function)
+        local queue = copas.queue.new({ name = name})
+        queue:add_worker(function(data)
+            self.logger:log(name .. " worker processing next task")
+            local success, err = pcall(worker_function, data)
+            if not success then
+                self.logger:log("Error in " .. name .. " worker: " .. tostring(err))
+            end
+        end)
+        return queue
+    end
 
 	self.request_queue = setup_queue("request_queue", function(data)
 		self:handle_client_request(data.request, data.client_socket)

@@ -283,13 +283,10 @@ describe("TCP Dispatcher", function()
             assert.are.equal("completed", query_response.status)
             assert.is_not_nil(query_response.result)
             assert.are.equal(1, #query_response.result)
-            assert.are.equal(1, query_response.result[1].test)
+            assert.are.equal(i, query_response.result[1].test)
         end
 
-        for _, client in ipairs(clients) do
-            client:close()
-        end
-        logger:log("Multiple client test completed")
+        logger:log("Multiple query test completed")
     end)
 
     --it("should handle multiple clients concurrently", function()
