@@ -1,3 +1,5 @@
+-- spec/executor_spec.lua
+-- require("mobdebug").start()
 package.path = package.path .. ";./?.lua"
 
 local socket = require("socket")
@@ -5,13 +7,25 @@ local utils = require("utils")
 local Logger = require("logger")
 local logger = Logger:new("log", "executor_spec.lua")
 local json = require("cjson")
-local config = utils.parse_inifile("config.ini")
+local utils = require("utils")
 
 describe("SQL Executor", function()
     local executor
     local client
+    local test_data_source
     local host = "localhost"
     local port = utils.get_free_os_port(host)
+    local lua_cmd = os.getenv("LUA"):gsub('\\', "/")
+    local test_config = utils.parse_inifile("test.ini")
+
+    -- Use first DSN in test.ini for mock db tests
+    for key, _ in pairs(test_config) do
+        test_data_source = key
+        break
+    end
+
+    -- Get the expected error message
+    local invalid_query_error = test_config[test_data_source].InvalidQueryError
 
     local function send_request(request)
         local message = json.encode(request) .. "\n"
@@ -31,7 +45,7 @@ describe("SQL Executor", function()
 
     setup(function()
         logger:log("Setting up test environment")
-        executor = assert(io.popen(config.lua.exec .. " executor.lua " .. port))
+        executor = assert(io.popen(lua_cmd .. " executor.lua " .. port))
         client = assert(socket.connect(host, port))
         client:settimeout(5)
         logger:log("Test environment set up complete")
@@ -40,7 +54,7 @@ describe("SQL Executor", function()
     it("should connect to a valid database", function()
 
         logger:log("Testing database connection")
-        local request = { action = "connect", dsn = config.odbc.dsn }
+        local request = { action = "connect", dsn = test_data_source }
         send_request(request)
         logger:log("Connection request sent")
 
@@ -93,7 +107,7 @@ describe("SQL Executor", function()
         logger:log("Invalid query response received: " .. json.encode(response))
         assert.are.equal("error", response.status)
         assert.is_not_nil(response.error)
-        assert.truthy(response.error:find(config.odbc.error))
+        assert.truthy(response.error:find(invalid_query_error))
         logger:log("invalid query test completed")
     end)
 

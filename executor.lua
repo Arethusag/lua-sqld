@@ -4,7 +4,6 @@ local socket = require("socket")
 local Driver = require("driver")
 local Logger = require("logger")
 local json = require("cjson")
-local utils = require("utils")
 
 local port = arg[1] or 8080
 local logger = Logger:new("log", "executor.lua")

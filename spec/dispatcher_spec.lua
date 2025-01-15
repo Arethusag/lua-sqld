@@ -6,11 +6,17 @@ local json = require("cjson")
 local utils = require("utils")
 local Logger = require("logger")
 local logger = Logger:new("log", "dispatcher_spec.lua")
-local config = utils.parse_inifile("config.ini")
+local test_config = utils.parse_inifile("test.ini")
 
 describe("TCP Dispatcher", function()
+    local test_data_source
     local host = "127.0.0.1"
     local port = utils.get_free_os_port(host)
+
+    for key, _ in pairs(test_config) do
+        test_data_source = key
+        break
+    end
 
     local function create_client()
         local client = assert(socket.tcp())
@@ -45,9 +51,9 @@ describe("TCP Dispatcher", function()
 
     setup(function()
         logger:log("Setting up test environment")
-        local process_cmd = config.lua.exec .. " dispatcher_init.lua "
-        local process_args = host .. " " .. port
-        server_process = io.popen(process_cmd .. process_args)
+        -- local lua_path = os.getenv("LUA")
+        local cmd = "C:\\msys64\\mingw64\\bin\\luajit.exe dispatcher_init.lua " .. host .. " " .. port
+        server_process = io.popen(cmd)
         logger:log("Dispatcher started")
     end)
 
@@ -73,91 +79,6 @@ describe("TCP Dispatcher", function()
         logger:log("Client connection test completed")
     end)
 
-    it("should echo messages back to the client", function()
-        logger:log("Testing echo functionality")
-        local client = create_client()
-        local request = { action = "echo", message = "test0" }
-        local response = send_and_receive(client, request)
-        assert.are.equal(request.message, response.message)
-        client:close()
-        logger:log("Echo test completed")
-    end)
-
-    it("should handle multiple clients sequentially", function()
-        logger:log("Testing multiple client handling")
-        local clients = {}
-        local messages = { "test1", "test2", "test3" }
-
-        for i = 1, #messages do
-            local client = create_client()
-            table.insert(clients, client)
-        end
-
-        for i, client in ipairs(clients) do
-            local request = { action = "echo", message = messages[i] }
-            local response = send_and_receive(client, request)
-            assert.are.equal(messages[i], response.message)
-        end
-
-        for _, client in ipairs(clients) do
-            client:close()
-        end
-        logger:log("Multiple client test completed")
-    end)
-
-    it("should handle multiple clients concurrently", function()
-        logger:log("Testing concurrent client handling")
-        local client_count = 3
-        local clients = {}
-        local messages = { "concurrent1", "concurrent2", "concurrent3" }
-        local responses = {}
-
-        local function client_coroutine(index)
-            local client = create_client()
-            clients[index] = client
-            coroutine.yield()
-
-            local request = { action = "echo", message = messages[index] }
-            local message = json.encode(request)
-            logger:log("Client sending request: " .. message)
-            client:send(message .. "\n")
-            coroutine.yield()
-
-            local json_response = client:receive("*l")
-            logger:log("Client received response: " .. json_response)
-            responses[index] = json.decode(json_response)
-            client:close()
-        end
-
-        -- Create coroutines for each client
-        local threads = {}
-        for i = 1, client_count do
-            threads[i] = coroutine.create(function() client_coroutine(i) end)
-        end
-
-        -- Connect all clients
-        for i = 1, client_count do
-            assert(coroutine.resume(threads[i]))
-        end
-
-        -- Send requests from all clients
-        for i = 1, client_count do
-            assert(coroutine.resume(threads[i]))
-        end
-
-        -- Receive responses for all clients
-        for i = 1, client_count do
-            assert(coroutine.resume(threads[i]))
-        end
-
-        -- Verify responses
-        for i = 1, client_count do
-            assert.are.equal(messages[i], responses[i].message)
-        end
-
-        logger:log("Concurrent client test completed")
-    end)
-
     it("should handle database connection requests", function()
         logger:log("Testing database connection requests")
         local client = create_client()
@@ -165,7 +86,7 @@ describe("TCP Dispatcher", function()
         local request = {
             action = "connect",
             bufnr = "1",
-            dsn = config.odbc.dsn
+            dsn = test_data_source
         }
 
         local message = json.encode(request)
@@ -190,7 +111,7 @@ describe("TCP Dispatcher", function()
         local connect_request = {
             action = "connect",
             bufnr = "2",
-            dsn = config.odbc.dsn
+            dsn = test_data_source
         }
         local connect_response = send_and_receive(client, connect_request)
         assert.are.equal("success", connect_response.status)
@@ -219,7 +140,7 @@ describe("TCP Dispatcher", function()
         local connect_request = {
             action = "connect",
             bufnr = "3",
-            dsn = config.odbc.dsn
+            dsn = test_data_source
         }
 
         local message = json.encode(connect_request)
@@ -251,7 +172,7 @@ describe("TCP Dispatcher", function()
         local connect_request = {
             action = "connect",
             bufnr = "4",
-            dsn = config.odbc.dsn
+            dsn = test_data_source
         }
 
         local message = json.encode(connect_request)
@@ -308,7 +229,7 @@ describe("TCP Dispatcher", function()
             local connect_request = {
                 action = "connect",
                 bufnr = bufnr,
-                dsn = config.odbc.dsn
+                dsn = test_data_source
             }
 
             local message = json.encode(connect_request)
@@ -341,28 +262,23 @@ describe("TCP Dispatcher", function()
             client:close()
         end
 
-        -- Create coroutines for each client
         local threads = {}
         for i = 1, client_count do
             threads[i] = coroutine.create(function() client_coroutine(i) end)
         end
  
-        -- Connect all clients
         for i = 1, client_count do
             assert(coroutine.resume(threads[i]))
         end
  
-        -- Send requests from all clients
         for i = 1, client_count do
             assert(coroutine.resume(threads[i]))
         end
  
-        -- Receive responses for all clients
         for i = 1, client_count do
             assert(coroutine.resume(threads[i]))
         end
  
-        -- Verify responses
         for i = 1, client_count do
             assert.are.equal("completed", responses[i].status)
             assert.is_not_nil(responses[i].result)

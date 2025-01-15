@@ -2,14 +2,22 @@ package.path = package.path .. ";./?.lua"
 
 local Driver = require("driver")
 local utils = require("utils")
-local config = utils.parse_inifile("config.ini")
+local config = utils.parse_inifile("test.ini")
 
 describe("Driver", function()
     local driver
+    local DSN
+
+    -- Use first DSN entry in test.ini as the mock odbc connection
+    for key, _ in pairs(config) do
+        DSN = key
+        break
+    end
+
 
     before_each(function()
         driver = Driver:new()
-        driver:connect(config.odbc.dsn)
+        driver:connect(DSN)
     end)
 
     after_each(function()

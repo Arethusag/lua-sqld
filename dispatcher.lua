@@ -5,7 +5,6 @@ local copas = require("copas")
 local Logger = require("logger")
 local json = require("cjson")
 local utils = require("utils")
-local config = utils.parse_inifile("config.ini")
 
 local Dispatcher = {}
 Dispatcher.__index = Dispatcher
@@ -32,7 +31,7 @@ end
 
 function Dispatcher:spawn_executor(bufnr, dsn)
 	executor_port = utils.get_free_os_port(self.host)
-	local cmd = string.format(config.lua.exec .. " executor.lua %d", executor_port)
+	local cmd = string.format(os.getenv("LUA") .. " executor.lua %d", executor_port)
 
 	self.logger:log("Spawning executor: " .. cmd)
 	local executor_process = io.popen(cmd)
