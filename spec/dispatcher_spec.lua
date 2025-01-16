@@ -288,4 +288,24 @@ describe("TCP Dispatcher", function()
 
         logger:log("Concurrent client test completed")
     end)
+
+    it("should provide ODBC connection information", function()
+        local client = create_client()
+        local odbcinfo_request = {
+            action = "odbcinfo",
+        }
+
+        local odbcinfo_message = json.encode(odbcinfo_request)
+        logger:log("Client sending request: " .. odbcinfo_message)
+        client:send(odbcinfo_message .. "\n")
+
+        local json_response, err = client:receive("*l")
+        logger:log("Client received response: " .. json_response)
+        assert.is_nil(err, "Error receiving response: " .. tostring(err))
+        assert.is_not_nil(json_response)
+
+        local odbcinfo_response = json.decode(json_response)
+        assert.are.equal("success", odbcinfo_response.status)
+        client:close()
+    end)
 end)

@@ -171,7 +171,29 @@ function Dispatcher:handle_client_request(request, client_socket)
 	elseif request.action == "shutdown" then
 		self.logger:log("Shutdown request received")
 		self.shutdown = true
-	end
+    elseif request.action == "odbcinfo" then
+		self.logger:log("ODBC info request received")
+        local odbcinfo = utils.get_odbc_data_sources()
+        if odbcinfo then
+			self.logger:log("Retrieved ODBC info: " .. json.encode(odbcinfo))
+            copas.send(client_socket, json.encode({
+                status = "success",
+                response = odbcinfo,
+            }) .. "\n")
+		else
+			self.logger:log("Failed to retrieve ODBC info")
+			copas.send(client_socket, json.encode({
+				status = "error",
+				error = "Failed to retrieve ODBC data source information from OS",
+			}) .. "\n")
+		end
+    else
+        self.logger:log("Unknown request... returning error")
+        copas.send(client_socket, json.encode({
+            status = "error",
+            error = "Client sent unknown request: " .. json.encode(request),
+        }) .. "\n")
+    end
 end
 
 function Dispatcher:handle_client(client_socket)
