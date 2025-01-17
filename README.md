@@ -1,5 +1,5 @@
 SQLDispatch is an asynchronous SQL query dispatcher written in lua. It is designed to provide a non-blocking TCP network
-interface for multiple clients connect to databases, send arbitrary SQL statements, and retrieve results.
+interface for multiple clients connect to databases, execute arbitrary SQL statements, and retrieve results.
 
 # Installation
 
