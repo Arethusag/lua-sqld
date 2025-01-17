@@ -1,5 +1,5 @@
 local luasql = require("luasql.odbc")
-local Logger = require("logger")
+local Logger = require("sqld.logger")
 local json = require("cjson")
 
 local Driver = {}

@@ -3,11 +3,10 @@
 package.path = package.path .. ";./?.lua"
 
 local socket = require("socket")
-local utils = require("utils")
-local Logger = require("logger")
+local utils = require("sqld.utils")
+local Logger = require("sqld.logger")
 local logger = Logger:new("log", "executor_spec.lua")
 local json = require("cjson")
-local utils = require("utils")
 
 describe("SQL Executor", function()
     local executor
@@ -45,7 +44,7 @@ describe("SQL Executor", function()
 
     setup(function()
         logger:log("Setting up test environment")
-        executor = assert(io.popen(lua_cmd .. " executor.lua " .. port))
+        executor = assert(io.popen(lua_cmd .. " sqld/executor.lua " .. port))
         client = assert(socket.connect(host, port))
         client:settimeout(5)
         logger:log("Test environment set up complete")

@@ -1,7 +1,7 @@
 -- spec/logger_spec.lua
 package.path = package.path .. ";./?.lua"
 
-local Logger = require("logger")
+local Logger = require("sqld.logger")
 
 describe("Logger", function()
     local log_file = "logger.log"

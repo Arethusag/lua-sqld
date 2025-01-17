@@ -1,7 +1,7 @@
 package.path = package.path .. ";./?.lua"
 
-local Driver = require("driver")
-local utils = require("utils")
+local Driver = require("sqld.driver")
+local utils = require("sqld.utils")
 local config = utils.parse_inifile("test.ini")
 
 describe("Driver", function()

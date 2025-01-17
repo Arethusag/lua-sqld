@@ -1,8 +1,8 @@
 package.path = package.path .. ";./?.lua"
 
 local socket = require("socket")
-local Driver = require("driver")
-local Logger = require("logger")
+local Driver = require("sqld.driver")
+local Logger = require("sqld.logger")
 local json = require("cjson")
 
 local port = arg[1] or 8080

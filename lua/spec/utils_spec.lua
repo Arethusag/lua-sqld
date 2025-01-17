@@ -2,7 +2,7 @@
 -- require('mobdebug').start()
 package.path = package.path .. ";./?.lua"
 
-local utils = require("utils")
+local utils = require("sqld.utils")
 
 describe("Utils", function()
 

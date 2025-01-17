@@ -3,8 +3,8 @@ package.path = package.path .. ";../?.lua;./?.lua"
 
 local socket = require("socket")
 local json = require("cjson")
-local utils = require("utils")
-local Logger = require("logger")
+local utils = require("sqld.utils")
+local Logger = require("sqld.logger")
 local logger = Logger:new("log", "dispatcher_spec.lua")
 local test_config = utils.parse_inifile("test.ini")
 
@@ -52,7 +52,7 @@ describe("TCP Dispatcher", function()
     setup(function()
         logger:log("Setting up test environment")
         -- local lua_path = os.getenv("LUA")
-        local cmd = "C:\\msys64\\mingw64\\bin\\luajit.exe dispatcher_init.lua " .. host .. " " .. port
+        local cmd = os.getenv("LUA") .. " sqld/init.lua " .. host .. " " .. port
         server_process = io.popen(cmd)
         logger:log("Dispatcher started")
     end)
