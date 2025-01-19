@@ -1,4 +1,5 @@
 --dispatcher.lua
+package.path = package.path .. ";./lua/?.lua"
 
 local socket = require("socket")
 local copas = require("copas")
@@ -31,7 +32,11 @@ end
 
 function Dispatcher:spawn_executor(bufnr, dsn)
 	executor_port = utils.get_free_os_port(self.host)
-	local cmd = string.format(os.getenv("LUA") .. " sqld/executor.lua %d", executor_port)
+    local script_path = debug.getinfo(1, "S").source:sub(2)
+    local dir_path = script_path:match("(.*/)")
+    -- executor.lua should always be in the same directory as dispatcher.lua
+    local executor_path = dir_path .. "sqld/executor.lua"
+	local cmd = string.format("%s %s %d", os.getenv("LUA"), executor_path, executor_port)
 
 	self.logger:log("Spawning executor: " .. cmd)
 	local executor_process = io.popen(cmd)

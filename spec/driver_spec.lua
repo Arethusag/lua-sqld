@@ -1,4 +1,4 @@
-package.path = package.path .. ";./?.lua"
+package.path = package.path .. ";./lua/?.lua"
 
 local Driver = require("sqld.driver")
 local utils = require("sqld.utils")

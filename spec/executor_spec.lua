@@ -1,6 +1,5 @@
 -- spec/executor_spec.lua
--- require("mobdebug").start()
-package.path = package.path .. ";./?.lua"
+package.path = package.path .. ";./lua/?.lua"
 
 local socket = require("socket")
 local utils = require("sqld.utils")
@@ -44,7 +43,7 @@ describe("SQL Executor", function()
 
     setup(function()
         logger:log("Setting up test environment")
-        executor = assert(io.popen(lua_cmd .. " sqld/executor.lua " .. port))
+        executor = assert(io.popen(lua_cmd .. " ./lua/sqld/executor.lua " .. port))
         client = assert(socket.connect(host, port))
         client:settimeout(5)
         logger:log("Test environment set up complete")

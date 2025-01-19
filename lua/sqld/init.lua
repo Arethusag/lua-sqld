@@ -1,4 +1,5 @@
 --sqld/init.lua
+package.path = package.path .. ";./lua/?.lua"
 
 local Dispatcher = require("sqld.dispatcher")
 

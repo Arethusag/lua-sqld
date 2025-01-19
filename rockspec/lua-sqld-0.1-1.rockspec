@@ -1,7 +1,7 @@
-local package_name = "SQLDispatch"
+local package_name = "lua-sqld"
 local package_version = "0.1"
 local rockspec_revision = "1"
-local github_account_name = "ArethusG"
+local github_account_name = "ArethusaG"
 local github_repo_name = package_name
 
 package = package_name
@@ -9,7 +9,7 @@ version = package_version .. "-" .. rockspec_revision
 
 source = {
    url = "git+https://github.com/" .. github_account_name .. "/" .. github_repo_name .. ".git",
-   tag = "v" .. package_version
+   tag = "master" --TODO: stable release branch: tag = "v" .. package_version
 }
 
 description = {
@@ -25,7 +25,7 @@ description = {
 
 dependencies = {
     "lua >= 5.1",
-    "lua-socket",
+    "luasocket",
     "luasql-odbc",
     "lua-cjson",
     "copas"
